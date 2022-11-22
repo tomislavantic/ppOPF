@@ -76,6 +76,7 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, v
         for ft in range(0, len(network.line.index)):
             if f_n == network.line.from_bus[ft] and t_n == network.line.to_bus[ft]:
                 max_current = network.line.max_i_ka[ft]*1000/(1e6/400)
+                break
         
         return m.current_re_line_ft[f_n,t_n,p,t]*m.current_re_line_ft[f_n,t_n,p,t] + \
                m.current_im_line_ft[f_n,t_n,p,t]*m.current_im_line_ft[f_n,t_n,p,t] <= max_current**2
@@ -85,7 +86,8 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, v
         for ft in range(0, len(network.line.index)):
             if f_n == network.line.from_bus[ft] and t_n == network.line.to_bus[ft]:
                 max_current = network.line.max_i_ka[ft]*1000/(1e6/400)
-        
+                break
+           
         return m.current_re_line_tf[t_n,f_n,p,t]*m.current_re_line_tf[t_n,f_n,p,t] + \
                m.current_im_line_tf[t_n,f_n,p,t]*m.current_im_line_tf[t_n,f_n,p,t] <= max_current**2
     
@@ -94,8 +96,9 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, v
         for ft in range(0, len(network.trafo.index)):
             if f_n == network.trafo.hv_bus[ft] and t_n == network.trafo.lv_bus[ft]:
                 max_current = (network.trafo.sn_mva[ft]/1e6)/(network.trafo.vn_lv_kv[ft]*1e3)
+                break
             
-            return m.current_re_line_ft[f_n,t_n,p,t]*m.current_re_line_ft[f_n,t_n,p,t] + \
+        return m.current_re_line_ft[f_n,t_n,p,t]*m.current_re_line_ft[f_n,t_n,p,t] + \
                    m.current_im_line_ft[f_n,t_n,p,t]*m.current_im_line_ft[f_n,t_n,p,t] <= max_current**2
                    
     def current_flow_trafo_tf(m,f_n,t_n,p,t):
@@ -103,10 +106,10 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, v
         for ft in range(0, len(network.trafo.index)):
             if f_n == network.trafo.hv_bus[ft] and t_n == network.trafo.lv_bus[ft]:
                 max_current = (network.trafo.sn_mva[ft]/1e6)/(network.trafo.vn_lv_kv[ft]*1e3)
-                    
+                break 
+            
         return m.current_re_line_tf[t_n,f_n,p,t]*m.current_re_line_tf[t_n,f_n,p,t] + \
                m.current_im_line_tf[t_n,f_n,p,t]*m.current_im_line_tf[t_n,f_n,p,t] <= max_current**2
-                
     
     def current_gen_re(m, n, p, t):
         return m.p_gen[n, p, t] == m.voltage_re[n, p, t] * m.i_re_gen[n,p,t] + m.voltage_im[n, p, t] * m.i_im_gen[n,p,t]
@@ -201,6 +204,26 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, v
         
         tf_pair = [to_nodes[i], from_nodes[i]]
         tf_list.append(tf_pair)
+    
+    ft_list_l = []
+    tf_list_l = []
+    
+    for i in range(0, len(from_nodes_l)):
+        ft_pair = from_nodes_l[i], to_nodes_l[i]
+        ft_list_l.append(ft_pair)
+        
+        tf_pair = [to_nodes_l[i], from_nodes_l[i]]
+        tf_list_l.append(tf_pair)
+    
+    ft_list_t = []
+    tf_list_t = []
+    
+    for i in range(0, len(from_nodes_t)):
+        ft_pair = from_nodes_t[i], to_nodes_t[i]
+        ft_list_t.append(ft_pair)
+        
+        tf_pair = [to_nodes_t[i], from_nodes_t[i]]
+        tf_list_t.append(tf_pair)
         
     model.voltage_re  = pyo.Var(buses,phases, times, within = pyo.Reals, bounds = (-10,10))
     model.voltage_im  = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-10,10))
@@ -301,11 +324,11 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, v
     model.const_q_ft = pyo.Constraint(ft_list, phases, times, rule = q_ft)
     model.const_q_tf = pyo.Constraint(ft_list, phases, times, rule = q_tf)
     
-    model.const_current_flow_line_ft = pyo.Constraint(ft_list, phases, times, rule = current_flow_line_ft)
-    model.const_current_flow_line_tf = pyo.Constraint(ft_list, phases, times, rule = current_flow_line_tf)
-    #Uncomment if they are transformers in a network
-    # model.const_current_flow_trafo_ft = pyo.Constraint(ft_list, phases, times, rule = current_flow_trafo_ft)
-    # model.const_current_flow_trafo_tf = pyo.Constraint(ft_list, phases, times, rule = current_flow_trafo_tf)
+    model.const_current_flow_line_ft = pyo.Constraint(ft_list_l, phases, times, rule = current_flow_line_ft)
+    model.const_current_flow_line_tf = pyo.Constraint(ft_list_l, phases, times, rule = current_flow_line_tf)
+    
+    model.const_current_flow_trafo_ft = pyo.Constraint(ft_list_t, phases, times, rule = current_flow_trafo_ft)
+    model.const_current_flow_trafo_tf = pyo.Constraint(ft_list_t, phases, times, rule = current_flow_trafo_tf)
     
     model.const_i_load_re = pyo.Constraint(buses, phases, times, rule = current_load_re)
     model.const_i_load_im = pyo.Constraint(buses, phases, times, rule = current_load_im)
