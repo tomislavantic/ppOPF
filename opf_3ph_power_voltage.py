@@ -60,6 +60,7 @@ def opf_3ph_power_voltage(network, load_curve_a, load_curve_b, load_curve_c, vm_
         for ft in range(0, len(network.line.index)):
             if f_n == network.line.from_bus[ft] and t_n == network.line.to_bus[ft]:
                 max_current = network.line.max_i_ka[ft]
+                break
         
         return m.active_line_ft[f_n,t_n,p,t]*m.active_line_ft[f_n,t_n,p,t] + \
                m.reactive_line_ft[f_n,t_n,p,t]*m.reactive_line_ft[f_n,t_n,p,t] <= (max_current*network.bus.vn_kv[f_n])**2
@@ -69,6 +70,7 @@ def opf_3ph_power_voltage(network, load_curve_a, load_curve_b, load_curve_c, vm_
         for ft in range(0, len(network.line.index)):
             if f_n == network.line.from_bus[ft] and t_n == network.line.to_bus[ft]:
                 max_current = network.line.max_i_ka[ft]
+                break
         
         return m.active_line_tf[t_n,f_n,p,t]*m.active_line_tf[t_n,f_n,p,t] + \
                m.reactive_line_tf[t_n,f_n,p,t]*m.reactive_line_tf[t_n,f_n,p,t] <= (max_current*network.bus.vn_kv[t_n])**2
@@ -79,6 +81,7 @@ def opf_3ph_power_voltage(network, load_curve_a, load_curve_b, load_curve_c, vm_
         for ft in range(0, len(network.trafo.index)):
             if f_n == network.trafo.hv_bus[ft] and t_n == network.trafo.lv_bus[ft]:
                 max_power = network.trafo.sn_mva[ft]
+                break
             
             return m.active_line_ft[f_n,t_n,p,t]*m.active_line_ft[f_n,t_n,p,t] + \
                    m.reactive_line_ft[f_n,t_n,p,t]*m.reactive_line_ft[f_n,t_n,p,t] <= max_power**2
@@ -88,6 +91,7 @@ def opf_3ph_power_voltage(network, load_curve_a, load_curve_b, load_curve_c, vm_
         for ft in range(0, len(network.trafo.index)):
             if f_n == network.trafo.hv_bus[ft] and t_n == network.trafo.lv_bus[ft]:
                 max_power = network.trafo.sn_mva[ft]
+                break
                     
         return m.active_line_tf[t_n,f_n,p,t]*m.active_line_tf[t_n,f_n,p,t] + \
                m.reactive_line_tf[t_n,f_n,p,t]*m.reactive_line_tf[t_n,f_n,p,t] <= max_power**2
@@ -167,12 +171,35 @@ def opf_3ph_power_voltage(network, load_curve_a, load_curve_b, load_curve_c, vm_
     
     times = list(range(0, load_curve_a.shape[0]))
     
+    ft_list = []
+    tf_list = []
+    
     for i in range(0, len(from_nodes)):
         ft_pair = from_nodes[i], to_nodes[i]
         ft_list.append(ft_pair)
         
         tf_pair = [to_nodes[i], from_nodes[i]]
         tf_list.append(tf_pair)
+    
+    ft_list_l = []
+    tf_list_l = []
+    
+    for i in range(0, len(from_nodes_l)):
+        ft_pair = from_nodes_l[i], to_nodes_l[i]
+        ft_list_l.append(ft_pair)
+        
+        tf_pair = [to_nodes_l[i], from_nodes_l[i]]
+        tf_list_l.append(tf_pair)
+    
+    ft_list_t = []
+    tf_list_t = []
+    
+    for i in range(0, len(from_nodes_t)):
+        ft_pair = from_nodes_t[i], to_nodes_t[i]
+        ft_list_t.append(ft_pair)
+        
+        tf_pair = [to_nodes_t[i], from_nodes_t[i]]
+        tf_list_t.append(tf_pair)
     
     model.voltage_re  = pyo.Var(buses,phases, times, within = pyo.Reals)
     model.voltage_im  = pyo.Var(buses, phases, times, within = pyo.Reals)
@@ -254,11 +281,11 @@ def opf_3ph_power_voltage(network, load_curve_a, load_curve_b, load_curve_c, vm_
     model.const_reactive_ft = pyo.Constraint(ft_list, phases, times, rule = reactive_ft)
     model.const_reactive_tf = pyo.Constraint(ft_list, phases, times, rule = reactive_tf)
     
-    model.const_power_flow_line_ft = pyo.Constraint(ft_list, phases, times, rule = power_flow_line_ft)
-    model.const_power_flow_line_tf = pyo.Constraint(ft_list, phases, times, rule = power_flow_line_tf)
-    #Uncomment if they are transformers in a network
-    # model.const_power_flow_trafo_ft = pyo.Constraint(ft_list, phases, times, rule = power_flow_trafo_ft)
-    # model.const_power_flow_trafo_tf = pyo.Constraint(ft_list, phases, times, rule = power_flow_trafo_tf)
+    model.const_power_flow_line_ft = pyo.Constraint(ft_list_l, phases, times, rule = power_flow_line_ft)
+    model.const_power_flow_line_tf = pyo.Constraint(ft_list_l, phases, times, rule = power_flow_line_tf)
+    
+    model.const_power_flow_trafo_ft = pyo.Constraint(ft_list_t, phases, times, rule = power_flow_trafo_ft)
+    model.const_power_flow_trafo_tf = pyo.Constraint(ft_list_t, phases, times, rule = power_flow_trafo_tf)
     
     model.const_kaf = pyo.Constraint(buses, phases, times, rule = kirch_active_f) #Kirchoff acitve from
     model.const_kat = pyo.Constraint(buses, phases, times, rule = kirch_active_t) #Kirchoff active to
