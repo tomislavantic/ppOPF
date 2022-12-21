@@ -75,9 +75,9 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, v
         #Base power = 1e6, nominal voltage = 400/sqrt(3), Base Current = S/U
         for ft in range(0, len(network.line.index)):
             if f_n == network.line.from_bus[ft] and t_n == network.line.to_bus[ft]:
-                max_current = network.line.max_i_ka[ft]*1000/(1e6/400)
+                max_current = network.line.max_i_ka[ft]*1000/(network.sn_mva*1e6/(400/math.sqrt(3)))
                 break
-        
+       
         return m.current_re_line_ft[f_n,t_n,p,t]*m.current_re_line_ft[f_n,t_n,p,t] + \
                m.current_im_line_ft[f_n,t_n,p,t]*m.current_im_line_ft[f_n,t_n,p,t] <= max_current**2
     
@@ -85,7 +85,7 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, v
         #Base power = 1e6, nominal voltage = 400/sqrt(3), Base Current = S/U
         for ft in range(0, len(network.line.index)):
             if f_n == network.line.from_bus[ft] and t_n == network.line.to_bus[ft]:
-                max_current = network.line.max_i_ka[ft]*1000/(1e6/400)
+                max_current = network.line.max_i_ka[ft]*1000/(network.sn_mva*1e6/(400/math.sqrt(3)))
                 break
            
         return m.current_re_line_tf[t_n,f_n,p,t]*m.current_re_line_tf[t_n,f_n,p,t] + \
@@ -95,9 +95,9 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, v
         #Trafo is defined with maximum power, base power = 1e6
         for ft in range(0, len(network.trafo.index)):
             if f_n == network.trafo.hv_bus[ft] and t_n == network.trafo.lv_bus[ft]:
-                max_current = (network.trafo.sn_mva[ft]/1e6)/(network.trafo.vn_lv_kv[ft]*1e3)
-                break
-            
+                max_current = (network.trafo.sn_mva[ft]*1e6)/(network.trafo.vn_lv_kv[ft]*1e3/math.sqrt(3))/(network.sn_mva*1e6/(400/math.sqrt(3)))
+                break   
+
         return m.current_re_line_ft[f_n,t_n,p,t]*m.current_re_line_ft[f_n,t_n,p,t] + \
                    m.current_im_line_ft[f_n,t_n,p,t]*m.current_im_line_ft[f_n,t_n,p,t] <= max_current**2
                    
@@ -105,7 +105,7 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, v
         #Base power = 1e6, nominal voltage = 400/sqrt(3), Base Current = S/U
         for ft in range(0, len(network.trafo.index)):
             if f_n == network.trafo.hv_bus[ft] and t_n == network.trafo.lv_bus[ft]:
-                max_current = (network.trafo.sn_mva[ft]/1e6)/(network.trafo.vn_lv_kv[ft]*1e3)
+                max_current = (network.trafo.sn_mva[ft]*1e6)/(network.trafo.vn_lv_kv[ft]*1e3/math.sqrt(3))/(network.sn_mva*1e6/(400/math.sqrt(3)))
                 break 
             
         return m.current_re_line_tf[t_n,f_n,p,t]*m.current_re_line_tf[t_n,f_n,p,t] + \
