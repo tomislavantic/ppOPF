@@ -15,7 +15,7 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
     
     def vuf_limit(m,n,t):
         
-        return  9e-4*((m.voltage_re[n,0,t] - 0.5*(m.voltage_re[n,1,t] + m.voltage_re[n,2,t]) - \
+        return  4e-4*((m.voltage_re[n,0,t] - 0.5*(m.voltage_re[n,1,t] + m.voltage_re[n,2,t]) - \
                           math.sqrt(3)/2*(m.voltage_im[n,1,t] - m.voltage_im[n,2,t]))*\
                          (m.voltage_re[n,0,t] - 0.5*(m.voltage_re[n,1,t] + m.voltage_re[n,2,t]) - \
                           math.sqrt(3)/2*(m.voltage_im[n,1,t] - m.voltage_im[n,2,t])) + \
@@ -153,6 +153,7 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
             return m.kirchoff_current_re_to[n,p,t] + m.i_re_gen[n,p,t] - m.kirchoff_current_re_from[n,p,t] - m.i_re_load[n,p,t] == 0
         else:
             return m.kirchoff_current_re_to[n,p,t] + m.i_re_gen[n,p,t] - m.kirchoff_current_re_from[n,p,t] == 0
+    
     def kirch_current_im_t(m, n, p, t):
         sum_1 = 0
         
@@ -183,7 +184,6 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
         else:
             return m.kirchoff_current_im_to[n,p,t] + m.i_im_gen[n,p,t] - m.kirchoff_current_im_from[n,p,t] == 0
             
-        
     def pv_power_single_phase_lb(m,n,p,t):
         return m.p_gen[n,p,t] >= 0.0
     
@@ -201,7 +201,7 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
     
     def pv_power_three_phase_bc(m,n,t):
         return m.p_gen[n,1,t] == m.p_gen[n,2,t]
-      
+    
     r_abc, x_abc, g_abc, b_abc = imp_matrix.impedance_matrix(network)
     
     phases = [0,1,2]
@@ -210,8 +210,14 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
     from_nodes = np.concatenate((network.line.from_bus.values, network.trafo.hv_bus.values))
     to_nodes = np.concatenate((network.line.to_bus.values, network.trafo.lv_bus.values))
     
+    from_nodes_l = network.line.from_bus.values
+    to_nodes_l = network.line.to_bus.values
+    
+    from_nodes_t = network.trafo.hv_bus.values
+    to_nodes_t = network.trafo.lv_bus.values
+    
     times_range = list(range(0, load_curve_a.shape[0]))
-    # times_range = [55]
+    # times_range = list(range(0, 96))
     
     ft_list = []
     tf_list = []
@@ -242,7 +248,7 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
         
         tf_pair = [to_nodes_t[i], from_nodes_t[i]]
         tf_list_t.append(tf_pair)
-    
+        
     #Needed for single-phase connection of PVs or other DERs
     pv_phase = {}
     
@@ -257,6 +263,9 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
     v_b_df = pd.DataFrame(v_b, columns = network.bus.index)
     v_c_df = pd.DataFrame(v_c, columns = network.bus.index)
     
+    vuf = np.zeros([len(times_range), len(network.bus.index)])
+    vuf_df = pd.DataFrame(vuf, columns = network.bus.index)
+    
     p_gen_a = np.zeros([len(times_range), len(network.asymmetric_load.index)])
     p_gen_b = np.zeros([len(times_range), len(network.asymmetric_load.index)])
     p_gen_c = np.zeros([len(times_range), len(network.asymmetric_load.index)])
@@ -264,7 +273,7 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
     p_gen_a_df = pd.DataFrame(p_gen_a, columns = network.asymmetric_load.bus)
     p_gen_b_df = pd.DataFrame(p_gen_b, columns = network.asymmetric_load.bus)
     p_gen_c_df = pd.DataFrame(p_gen_c, columns = network.asymmetric_load.bus)
-    
+                    
     for t in times_range:
         print(t)
         times = [t]
@@ -291,6 +300,10 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
         
         model.p_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
         model.q_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
+        
+        model.q_gen_pos = pyo.Var(network.asymmetric_load.bus.values, phases, times, within = pyo.Reals, bounds = (0,100), initialize = 0.0)
+        model.q_gen_neg = pyo.Var(network.asymmetric_load.bus.values, phases, times, within = pyo.Reals, bounds = (0,100), initialize = 0.0)
+        model.q_gen_aux = pyo.Var(network.asymmetric_load.bus.values, phases, times, within = pyo.Reals, bounds = (0,100), initialize = 0.0)
         
         model.i_re_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
         model.i_im_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
@@ -328,7 +341,7 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
             model.p_load[network.asymmetric_load.bus[i], 0, t].fix(load_curve_a.iloc[t,i]/1e6)
             model.p_load[network.asymmetric_load.bus[i], 1, t].fix(load_curve_b.iloc[t,i]/1e6)
             model.p_load[network.asymmetric_load.bus[i], 2, t].fix(load_curve_c.iloc[t,i]/1e6)
-            
+
             model.q_load[network.asymmetric_load.bus[i], 0, t].fix(load_curve_a.iloc[t,i]*math.tan(math.acos(0.95))/1e6)
             model.q_load[network.asymmetric_load.bus[i], 1, t].fix(load_curve_b.iloc[t,i]*math.tan(math.acos(0.95))/1e6)
             model.q_load[network.asymmetric_load.bus[i], 2, t].fix(load_curve_c.iloc[t,i]*math.tan(math.acos(0.95))/1e6)
@@ -339,28 +352,30 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
                 model.p_gen[network.asymmetric_load.bus[i], 0, t].value = 0.0
                 model.p_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
                 model.p_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
+                
+                model.q_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
+                model.q_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
+                model.q_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
             
             elif pv_phase[network.asymmetric_load.bus[i]] == 1:
             
                 model.p_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
                 model.p_gen[network.asymmetric_load.bus[i], 1, t].value = 0.0
                 model.p_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
+                
+                model.q_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
+                model.q_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
+                model.q_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
             
             else:
                 model.p_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
                 model.p_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
                 model.p_gen[network.asymmetric_load.bus[i], 2, t].value = 0.0
-            
-            
-            #For three-phase connection
-            # model.p_gen[network.asymmetric_load.bus[i], 0, t].value = 0.0
-            # model.p_gen[network.asymmetric_load.bus[i], 1, t].value = 0.0
-            # model.p_gen[network.asymmetric_load.bus[i], 2, t].value = 0.0
-            
-            #Valid in both cases
-            model.q_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
-            model.q_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
-            model.q_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
+                     
+                #Valid in both cases
+                model.q_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
+                model.q_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
+                model.q_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
         
         for i in buses:
             
@@ -416,11 +431,11 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
         
         # model.constr_pv_three_phase_pv_ab = pyo.Constraint(network.asymmetric_load.bus.values, times, rule = pv_power_three_phase_ab)
         # model.constr_pv_three_phase_pv_bc = pyo.Constraint(network.asymmetric_load.bus.values, times, rule = pv_power_three_phase_bc)
-        
+                
         model.obj = pyo.Objective(expr = sum(model.p_gen[n,p,t] for n in network.asymmetric_load.bus.values for p in phases for t in times), sense = pyo.maximize)
-        
+                
         pyo.SolverFactory('ipopt').solve(model, tee=True) 
-         
+        
         for i in model.voltage_re:
             if i[1] == 0:
                 v_a_df.loc[i[2], i[0]] = math.sqrt(pyo.value(model.voltage_re[i])**2 + pyo.value(model.voltage_im[i])**2)
@@ -428,16 +443,37 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
                 v_b_df.loc[i[2], i[0]] = math.sqrt(pyo.value(model.voltage_re[i])**2 + pyo.value(model.voltage_im[i])**2)
             else:
                 v_c_df.loc[i[2], i[0]] = math.sqrt(pyo.value(model.voltage_re[i])**2 + pyo.value(model.voltage_im[i])**2)
+            
+        for n in network.bus.index:                             
+            
+            vuf_df.iloc[t,n] = math.sqrt(((pyo.value(model.voltage_re[n,0,t]) - 0.5*(pyo.value(model.voltage_re[n,1,t]) + pyo.value(model.voltage_re[n,2,t])) + \
+              math.sqrt(3)/2*(pyo.value(model.voltage_im[n,1,t]) - pyo.value(model.voltage_im[n,2,t])))*\
+            (pyo.value(model.voltage_re[n,0,t]) - 0.5*(pyo.value(model.voltage_re[n,1,t]) + pyo.value(model.voltage_re[n,2,t])) + \
+              math.sqrt(3)/2*(pyo.value(model.voltage_im[n,1,t]) - pyo.value(model.voltage_im[n,2,t]))) + \
+            (pyo.value(model.voltage_im[n,0,t]) - math.sqrt(3)/2*(pyo.value(model.voltage_re[n,1,t]) - pyo.value(model.voltage_re[n,2,t])) - \
+              0.5*(pyo.value(model.voltage_im[n,1,t]) + pyo.value(model.voltage_im[n,2,t])))*\
+            (pyo.value(model.voltage_im[n,0,t]) - math.sqrt(3)/2*(pyo.value(model.voltage_re[n,1,t]) - pyo.value(model.voltage_re[n,2,t])) - \
+              0.5*(pyo.value(model.voltage_im[n,1,t]) + pyo.value(model.voltage_im[n,2,t]))))/\
+            ((pyo.value(model.voltage_re[n,0,t]) - 0.5*(pyo.value(model.voltage_re[n,1,t]) + pyo.value(model.voltage_re[n,2,t])) - \
+              math.sqrt(3)/2*(pyo.value(model.voltage_im[n,1,t]) - pyo.value(model.voltage_im[n,2,t])))*\
+            (pyo.value(model.voltage_re[n,0,t]) - 0.5*(pyo.value(model.voltage_re[n,1,t]) + pyo.value(model.voltage_re[n,2,t])) - \
+              math.sqrt(3)/2*(pyo.value(model.voltage_im[n,1,t]) - pyo.value(model.voltage_im[n,2,t]))) + \
+            (pyo.value(model.voltage_im[n,0,t]) + math.sqrt(3)/2*(pyo.value(model.voltage_re[n,1,t]) - pyo.value(model.voltage_re[n,2,t])) - \
+              0.5*(pyo.value(model.voltage_im[n,1,t]) + pyo.value(model.voltage_im[n,2,t])))*\
+            (pyo.value(model.voltage_im[n,0,t]) + math.sqrt(3)/2*(pyo.value(model.voltage_re[n,1,t]) - pyo.value(model.voltage_re[n,2,t])) - \
+              0.5*(pyo.value(model.voltage_im[n,1,t]) + pyo.value(model.voltage_im[n,2,t])))))*100
         
         for i in model.p_gen:
-            
+                
             if i[0] in network.asymmetric_load.bus.values:
                 if i[1] == 0:
                     p_gen_a_df.loc[i[2], i[0]] = pyo.value(model.p_gen[i])
+
                 elif i[1] == 1:
                     p_gen_b_df.loc[i[2], i[0]] = pyo.value(model.p_gen[i])
+
                 else:
                     p_gen_c_df.loc[i[2], i[0]] = pyo.value(model.p_gen[i])
     
-    return v_a_df, v_b_df, v_c_df, p_gen_a_df, p_gen_b_df, p_gen_c_df
+    return v_a_df, v_b_df, v_c_df, vuf_df, p_gen_a_df, p_gen_b_df, p_gen_c_df
         
