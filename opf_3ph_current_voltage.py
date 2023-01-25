@@ -183,7 +183,6 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
         else:
             return m.kirchoff_current_im_to[n,p,t] + m.i_im_gen[n,p,t] - m.kirchoff_current_im_from[n,p,t] == 0
 
-    
     model = pyo.ConcreteModel()
     
     r_abc, x_abc, g_abc, b_abc = imp_matrix.impedance_matrix(network)
@@ -201,7 +200,6 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
     to_nodes_t = network.trafo.lv_bus.values
     
     times_range = list(range(0, load_curve_a.shape[0]))
-    # times_range = list(range(0, 96))
     
     ft_list = []
     tf_list = []
@@ -254,10 +252,6 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
         model.p_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
         model.q_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
         
-        model.q_gen_pos = pyo.Var(network.asymmetric_load.bus.values, phases, times, within = pyo.Reals, bounds = (0,100), initialize = 0.0)
-        model.q_gen_neg = pyo.Var(network.asymmetric_load.bus.values, phases, times, within = pyo.Reals, bounds = (0,100), initialize = 0.0)
-        model.q_gen_aux = pyo.Var(network.asymmetric_load.bus.values, phases, times, within = pyo.Reals, bounds = (0,100), initialize = 0.0)
-        
         model.i_re_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
         model.i_im_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
         
@@ -299,37 +293,15 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
             model.q_load[network.asymmetric_load.bus[i], 1, t].fix(load_curve_b.iloc[t,i]*math.tan(math.acos(0.95))/1e6)
             model.q_load[network.asymmetric_load.bus[i], 2, t].fix(load_curve_c.iloc[t,i]*math.tan(math.acos(0.95))/1e6)
             
-            #For single-phase connection with randomly defined connection phase
-            if pv_phase[network.asymmetric_load.bus[i]] == 0:
             
-                model.p_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
-                model.p_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
-                model.p_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
+            model.p_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
+            model.p_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
+            model.p_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
                 
-                model.q_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
-                model.q_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
-                model.q_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
+            model.q_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
+            model.q_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
+            model.q_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
             
-            elif pv_phase[network.asymmetric_load.bus[i]] == 1:
-            
-                model.p_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
-                model.p_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
-                model.p_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
-                
-                model.q_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
-                model.q_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
-                model.q_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
-            
-            else:
-                model.p_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
-                model.p_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
-                model.p_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
-                     
-                #Valid in both cases
-                model.q_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
-                model.q_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
-                model.q_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
-        
         for i in buses:
             
             if i not in network.asymmetric_load.bus.values and i!=0:
