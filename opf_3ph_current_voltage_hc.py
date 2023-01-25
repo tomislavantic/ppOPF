@@ -183,25 +183,10 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
             return m.kirchoff_current_im_to[n,p,t] + m.i_im_gen[n,p,t] - m.kirchoff_current_im_from[n,p,t] - m.i_im_load[n,p,t] == 0
         else:
             return m.kirchoff_current_im_to[n,p,t] + m.i_im_gen[n,p,t] - m.kirchoff_current_im_from[n,p,t] == 0
-            
-    def pv_power_single_phase_lb(m,n,p,t):
-        return m.p_gen[n,p,t] >= 0.0
-    
+              
     def pv_power_single_phase_ub(m,n,p,t):
         return m.p_gen[n,p,t] <= (3.68/1000) * pv_curve.iloc[t,0]
-    
-    def pv_power_three_phase_lb(m,n,p,t):
-        return m.p_gen[n,p,t] >= 0.0
-    
-    def pv_power_three_phase_ub(m,n,p,t):
-        return m.p_gen[n,p,t] <= (500/1000)/3 * pv_curve.iloc[t,0]
-    
-    def pv_power_three_phase_ab(m,n,t):
-        return m.p_gen[n,0,t] == m.p_gen[n,1,t]
-    
-    def pv_power_three_phase_bc(m,n,t):
-        return m.p_gen[n,1,t] == m.p_gen[n,2,t]
-    
+        
     r_abc, x_abc, g_abc, b_abc = imp_matrix.impedance_matrix(network)
     
     phases = [0,1,2]
@@ -298,12 +283,8 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
         model.p_load = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
         model.q_load = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
         
-        model.p_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
-        model.q_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
-        
-        model.q_gen_pos = pyo.Var(network.asymmetric_load.bus.values, phases, times, within = pyo.Reals, bounds = (0,100), initialize = 0.0)
-        model.q_gen_neg = pyo.Var(network.asymmetric_load.bus.values, phases, times, within = pyo.Reals, bounds = (0,100), initialize = 0.0)
-        model.q_gen_aux = pyo.Var(network.asymmetric_load.bus.values, phases, times, within = pyo.Reals, bounds = (0,100), initialize = 0.0)
+        model.p_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (0,100), initialize = 0.0)
+        model.q_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (0,100), initialize = 0.0)
         
         model.i_re_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
         model.i_im_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
@@ -372,7 +353,6 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
                 model.p_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
                 model.p_gen[network.asymmetric_load.bus[i], 2, t].value = 0.0
                      
-                #Valid in both cases
                 model.q_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
                 model.q_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
                 model.q_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
@@ -422,16 +402,9 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
         model.const_kirchoff_i_im_eq = pyo.Constraint(buses, phases, times, rule = kirch_current_im_node_eq)
         
         model.constr_vuf = pyo.Constraint(buses, times, rule = vuf_limit)
-        
-        model.constr_pv_single_phase_pv_lb = pyo.Constraint(network.asymmetric_load.bus.values, phases, times, rule = pv_power_single_phase_lb)
+               
         model.constr_pv_single_phase_pv_ub = pyo.Constraint(network.asymmetric_load.bus.values, phases, times, rule = pv_power_single_phase_ub)
         
-        # model.constr_pv_three_phase_pv_lb = pyo.Constraint(network.asymmetric_load.bus.values, phases, times, rule = pv_power_three_phase_lb)
-        # model.constr_pv_three_phase_pv_ub = pyo.Constraint(network.asymmetric_load.bus.values, phases, times, rule = pv_power_three_phase_ub)
-        
-        # model.constr_pv_three_phase_pv_ab = pyo.Constraint(network.asymmetric_load.bus.values, times, rule = pv_power_three_phase_ab)
-        # model.constr_pv_three_phase_pv_bc = pyo.Constraint(network.asymmetric_load.bus.values, times, rule = pv_power_three_phase_bc)
-                
         model.obj = pyo.Objective(expr = sum(model.p_gen[n,p,t] for n in network.asymmetric_load.bus.values for p in phases for t in times), sense = pyo.maximize)
                 
         pyo.SolverFactory('ipopt').solve(model, tee=True) 
