@@ -52,25 +52,6 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
         return m.voltage_im[t_n,p,t] - m.voltage_im[f_n,p,t] - sum(r_abc[f_n,t_n][p,q]*m.current_im_line_tf[t_n,f_n,q,t] for q in phases) -\
             sum(x_abc[f_n,t_n][p,q]*m.current_re_line_tf[t_n,f_n,q,t] for q in phases) == 0
     
-    def p_ft(m, f_n, t_n, p, t):
-        return m.active_line_ft[f_n,t_n,p,t] == m.voltage_re[f_n,p,t]*m.current_re_line_ft[f_n,t_n,p,t] + \
-                                              m.voltage_im[f_n,p,t]*m.current_im_line_ft[f_n,t_n,p,t]
-    
-    def p_tf(m, f_n, t_n, p, t):
-        
-        return m.active_line_tf[t_n,f_n,p,t] == m.voltage_re[t_n,p,t]*m.current_re_line_tf[t_n,f_n,p,t] + \
-                                              m.voltage_im[t_n,p,t]*m.current_im_line_tf[t_n,f_n,p,t]
-    
-    def q_ft(m, f_n, t_n, p, t):
-                
-        return m.reactive_line_ft[f_n,t_n,p,t] == m.voltage_im[f_n,p,t]*m.current_re_line_ft[f_n,t_n,p,t] - \
-                                              m.voltage_re[f_n,p,t]*m.current_im_line_ft[f_n,t_n,p,t]
-    
-    def q_tf(m, f_n, t_n, p, t):
-            
-        return m.reactive_line_tf[t_n,f_n,p,t] == m.voltage_im[t_n,p,t]*m.current_re_line_tf[t_n,f_n,p,t] - \
-                                              m.voltage_re[t_n,p,t]*m.current_im_line_tf[t_n,f_n,p,t]
-    
     def current_flow_line_ft(m,f_n,t_n,p,t):
         #Base power = 1e6, nominal voltage = 400/sqrt(3), Base Current = S/U
         for ft in range(0, len(network.line.index)):
@@ -232,121 +213,110 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
         tf_list_t.append(tf_pair)
         
     model.voltage_re  = pyo.Var(buses,phases, times, within = pyo.Reals, bounds = (-10,10))
-        model.voltage_im  = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-10,10))
-        
-        model.active_line_ft = pyo.Var(ft_list, phases, times, within = pyo.Reals, bounds = (-10,10), initialize = 0.0)
-        model.reactive_line_ft = pyo.Var(ft_list, phases, times, within = pyo.Reals, bounds = (-10,10), initialize = 0.0)
-        
-        model.active_line_tf = pyo.Var(tf_list, phases, times, within = pyo.Reals, bounds = (-10,10), initialize = 0.0)
-        model.reactive_line_tf = pyo.Var(tf_list, phases, times, within = pyo.Reals, bounds = (-10,10), initialize = 0.0)
-        
-        model.current_re_line_ft = pyo.Var(ft_list, phases, times, within = pyo.Reals, bounds = (-10,10), initialize = 0.0)
-        model.current_im_line_ft = pyo.Var(ft_list, phases, times, within = pyo.Reals, bounds = (-10,10), initialize = 0.0)
-        
-        model.current_re_line_tf = pyo.Var(tf_list, phases, times, within = pyo.Reals, bounds = (-10,10), initialize = 0.0)
-        model.current_im_line_tf = pyo.Var(tf_list, phases, times, within = pyo.Reals, bounds = (-10,10), initialize = 0.0)
-            
-        model.p_load = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
-        model.q_load = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
-        
-        model.p_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
-        model.q_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
-        
-        model.i_re_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
-        model.i_im_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
-        
-        model.i_re_load = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
-        model.i_im_load = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
-        
-        model.kirchoff_current_re_to = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-10,10))
-        model.kirchoff_current_re_from = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-10,10))
-        
-        model.kirchoff_current_im_to = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-10,10))
-        model.kirchoff_current_im_from = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-10,10))
-            
-        for i in buses:
-                
-            if i == 0:
-                model.voltage_re[i,0,t].fix(vm_pu*math.cos(0))
-                model.voltage_re[i,1,t].fix(vm_pu*math.cos(-2/3*math.pi))
-                model.voltage_re[i,2,t].fix(vm_pu*math.cos(2/3*math.pi))
-        
-                model.voltage_im[i,0,t].fix(vm_pu*math.sin(0))
-                model.voltage_im[i,1,t].fix(vm_pu*math.sin(-2/3*math.pi))
-                model.voltage_im[i,2,t].fix(vm_pu*math.sin(2/3*math.pi))
-                        
-            else:
-                model.voltage_re[i,0,t].value = vm_pu*math.cos(0)
-                model.voltage_re[i,1,t].value = vm_pu*math.cos(-2/3*math.pi)
-                model.voltage_re[i,2,t].value = vm_pu*math.cos(2/3*math.pi)
-                
-                model.voltage_im[i,0,t].value = vm_pu*math.sin(0)
-                model.voltage_im[i,1,t].value = vm_pu*math.sin(-2/3*math.pi)
-                model.voltage_im[i,2,t].value = vm_pu*math.sin(2/3*math.pi)
+    model.voltage_im  = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-10,10))
     
-        for i in range(0, len(network.asymmetric_load.bus)):
-            model.p_load[network.asymmetric_load.bus[i], 0, t].fix(load_curve_a.iloc[t,i]/1e6)
-            model.p_load[network.asymmetric_load.bus[i], 1, t].fix(load_curve_b.iloc[t,i]/1e6)
-            model.p_load[network.asymmetric_load.bus[i], 2, t].fix(load_curve_c.iloc[t,i]/1e6)
+    model.current_re_line_ft = pyo.Var(ft_list, phases, times, within = pyo.Reals, bounds = (-10,10), initialize = 0.0)
+    model.current_im_line_ft = pyo.Var(ft_list, phases, times, within = pyo.Reals, bounds = (-10,10), initialize = 0.0)
+    
+    model.current_re_line_tf = pyo.Var(tf_list, phases, times, within = pyo.Reals, bounds = (-10,10), initialize = 0.0)
+    model.current_im_line_tf = pyo.Var(tf_list, phases, times, within = pyo.Reals, bounds = (-10,10), initialize = 0.0)
+        
+    model.p_load = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
+    model.q_load = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
+    
+    model.p_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
+    model.q_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
+    
+    model.i_re_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
+    model.i_im_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
+    
+    model.i_re_load = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
+    model.i_im_load = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
+    
+    model.kirchoff_current_re_to = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-10,10))
+    model.kirchoff_current_re_from = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-10,10))
+    
+    model.kirchoff_current_im_to = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-10,10))
+    model.kirchoff_current_im_from = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-10,10))
+        
+    for i in buses:
+            
+        if i == 0:
+            model.voltage_re[i,0,t].fix(vm_pu*math.cos(0))
+            model.voltage_re[i,1,t].fix(vm_pu*math.cos(-2/3*math.pi))
+            model.voltage_re[i,2,t].fix(vm_pu*math.cos(2/3*math.pi))
+    
+            model.voltage_im[i,0,t].fix(vm_pu*math.sin(0))
+            model.voltage_im[i,1,t].fix(vm_pu*math.sin(-2/3*math.pi))
+            model.voltage_im[i,2,t].fix(vm_pu*math.sin(2/3*math.pi))
+                    
+        else:
+            model.voltage_re[i,0,t].value = vm_pu*math.cos(0)
+            model.voltage_re[i,1,t].value = vm_pu*math.cos(-2/3*math.pi)
+            model.voltage_re[i,2,t].value = vm_pu*math.cos(2/3*math.pi)
+            
+            model.voltage_im[i,0,t].value = vm_pu*math.sin(0)
+            model.voltage_im[i,1,t].value = vm_pu*math.sin(-2/3*math.pi)
+            model.voltage_im[i,2,t].value = vm_pu*math.sin(2/3*math.pi)
 
-            model.q_load[network.asymmetric_load.bus[i], 0, t].fix(load_curve_a.iloc[t,i]*math.tan(math.acos(0.95))/1e6)
-            model.q_load[network.asymmetric_load.bus[i], 1, t].fix(load_curve_b.iloc[t,i]*math.tan(math.acos(0.95))/1e6)
-            model.q_load[network.asymmetric_load.bus[i], 2, t].fix(load_curve_c.iloc[t,i]*math.tan(math.acos(0.95))/1e6)
+    for i in range(0, len(network.asymmetric_load.bus)):
+        model.p_load[network.asymmetric_load.bus[i], 0, t].fix(load_curve_a.iloc[t,i]/1e6)
+        model.p_load[network.asymmetric_load.bus[i], 1, t].fix(load_curve_b.iloc[t,i]/1e6)
+        model.p_load[network.asymmetric_load.bus[i], 2, t].fix(load_curve_c.iloc[t,i]/1e6)
+
+        model.q_load[network.asymmetric_load.bus[i], 0, t].fix(load_curve_a.iloc[t,i]*math.tan(math.acos(0.95))/1e6)
+        model.q_load[network.asymmetric_load.bus[i], 1, t].fix(load_curve_b.iloc[t,i]*math.tan(math.acos(0.95))/1e6)
+        model.q_load[network.asymmetric_load.bus[i], 2, t].fix(load_curve_c.iloc[t,i]*math.tan(math.acos(0.95))/1e6)
+        
+        
+        model.p_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
+        model.p_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
+        model.p_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
             
+        model.q_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
+        model.q_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
+        model.q_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
+        
+    for i in buses:
+        
+        if i not in network.asymmetric_load.bus.values and i!=0:
             
-            model.p_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
-            model.p_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
-            model.p_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
-                
-            model.q_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
-            model.q_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
-            model.q_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
-            
-        for i in buses:
-            
-            if i not in network.asymmetric_load.bus.values and i!=0:
-                
-                for p in phases:
-                    model.p_load[i, p, t].fix(0.0)
-                    model.q_load[i, p, t].fix(0.0)
-                                   
-                    model.p_gen[i, p, t].fix(0.0)
-                    model.q_gen[i, p, t].fix(0.0)
+            for p in phases:
+                model.p_load[i, p, t].fix(0.0)
+                model.q_load[i, p, t].fix(0.0)
+                               
+                model.p_gen[i, p, t].fix(0.0)
+                model.q_gen[i, p, t].fix(0.0)
+
+    model.const_v_magnitude_lb = pyo.Constraint(buses, phases, times, rule = voltage_magnitude_lb)
+    model.const_v_magnitude_ub = pyo.Constraint(buses, phases, times, rule = voltage_magnitude_ub)
     
-        model.const_v_magnitude_lb = pyo.Constraint(buses, phases, times, rule = voltage_magnitude_lb)
-        model.const_v_magnitude_ub = pyo.Constraint(buses, phases, times, rule = voltage_magnitude_ub)
-        
-        model.const_v_drop_re_ft = pyo.Constraint(ft_list, phases, times, rule = voltage_drop_real_ft)
-        model.const_v_drop_re_tf = pyo.Constraint(ft_list, phases, times, rule = voltage_drop_real_tf)
-        model.const_v_drop_im_ft = pyo.Constraint(ft_list, phases, times, rule = voltage_drop_imag_ft)
-        model.const_v_drop_im_tf = pyo.Constraint(ft_list, phases, times, rule = voltage_drop_imag_tf)
-        
-        model.const_p_ft = pyo.Constraint(ft_list, phases, times, rule = p_ft)
-        model.const_p_tf = pyo.Constraint(ft_list, phases, times, rule = p_tf)
-        model.const_q_ft = pyo.Constraint(ft_list, phases, times, rule = q_ft)
-        model.const_q_tf = pyo.Constraint(ft_list, phases, times, rule = q_tf)
-        
-        model.const_current_flow_line_ft = pyo.Constraint(ft_list_l, phases, times, rule = current_flow_line_ft)
-        model.const_current_flow_line_tf = pyo.Constraint(ft_list_l, phases, times, rule = current_flow_line_tf)
-        
-        model.const_current_flow_trafo_ft = pyo.Constraint(ft_list_t, phases, times, rule = current_flow_trafo_ft)
-        model.const_current_flow_trafo_tf = pyo.Constraint(ft_list_t, phases, times, rule = current_flow_trafo_tf)
-        
-        model.const_i_load_re = pyo.Constraint(buses, phases, times, rule = current_load_re)
-        model.const_i_load_im = pyo.Constraint(buses, phases, times, rule = current_load_im)
-        
-        model.const_i_gen_re = pyo.Constraint(buses, phases, times, rule = current_gen_re)
-        model.const_i_gen_im = pyo.Constraint(buses, phases, times, rule = current_gen_im)
-        
-        model.const_k_i_re_f = pyo.Constraint(buses, phases, times, rule = kirch_current_re_f) #Kirchoff acitve from
-        model.const_k_i_re_t = pyo.Constraint(buses, phases, times, rule = kirch_current_re_t) #Kirchoff active to
-        model.const_kirchoff_i_re_eq = pyo.Constraint(buses, phases, times, rule = kirch_current_re_node_eq)
-        
-        model.const_k_i_im_f = pyo.Constraint(buses, phases, times, rule = kirch_current_im_f) #Kirchoff acitve from
-        model.const_k_i_im_t = pyo.Constraint(buses, phases, times, rule = kirch_current_im_t) #Kirchoff active to
-        model.const_kirchoff_i_im_eq = pyo.Constraint(buses, phases, times, rule = kirch_current_im_node_eq)
-        
-        model.constr_vuf = pyo.Constraint(buses, times, rule = vuf_limit)
+    model.const_v_drop_re_ft = pyo.Constraint(ft_list, phases, times, rule = voltage_drop_real_ft)
+    model.const_v_drop_re_tf = pyo.Constraint(ft_list, phases, times, rule = voltage_drop_real_tf)
+    model.const_v_drop_im_ft = pyo.Constraint(ft_list, phases, times, rule = voltage_drop_imag_ft)
+    model.const_v_drop_im_tf = pyo.Constraint(ft_list, phases, times, rule = voltage_drop_imag_tf)
+    
+    model.const_current_flow_line_ft = pyo.Constraint(ft_list_l, phases, times, rule = current_flow_line_ft)
+    model.const_current_flow_line_tf = pyo.Constraint(ft_list_l, phases, times, rule = current_flow_line_tf)
+    
+    model.const_current_flow_trafo_ft = pyo.Constraint(ft_list_t, phases, times, rule = current_flow_trafo_ft)
+    model.const_current_flow_trafo_tf = pyo.Constraint(ft_list_t, phases, times, rule = current_flow_trafo_tf)
+    
+    model.const_i_load_re = pyo.Constraint(buses, phases, times, rule = current_load_re)
+    model.const_i_load_im = pyo.Constraint(buses, phases, times, rule = current_load_im)
+    
+    model.const_i_gen_re = pyo.Constraint(buses, phases, times, rule = current_gen_re)
+    model.const_i_gen_im = pyo.Constraint(buses, phases, times, rule = current_gen_im)
+    
+    model.const_k_i_re_f = pyo.Constraint(buses, phases, times, rule = kirch_current_re_f) #Kirchoff acitve from
+    model.const_k_i_re_t = pyo.Constraint(buses, phases, times, rule = kirch_current_re_t) #Kirchoff active to
+    model.const_kirchoff_i_re_eq = pyo.Constraint(buses, phases, times, rule = kirch_current_re_node_eq)
+    
+    model.const_k_i_im_f = pyo.Constraint(buses, phases, times, rule = kirch_current_im_f) #Kirchoff acitve from
+    model.const_k_i_im_t = pyo.Constraint(buses, phases, times, rule = kirch_current_im_t) #Kirchoff active to
+    model.const_kirchoff_i_im_eq = pyo.Constraint(buses, phases, times, rule = kirch_current_im_node_eq)
+    
+    model.constr_vuf = pyo.Constraint(buses, times, rule = vuf_limit)
         
     model.obj = pyo.Objective(expr = sum(model.p_gen[0,0,t] + model.p_gen[0,1,t] + model.p_gen[0,2,t] for t in times), sense = pyo.minimize)
         
