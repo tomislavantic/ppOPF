@@ -53,25 +53,6 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
         return m.voltage_im[t_n,p,t] - m.voltage_im[f_n,p,t] - sum(r_abc[f_n,t_n][p,q]*m.current_im_line_tf[t_n,f_n,q,t] for q in phases) -\
             sum(x_abc[f_n,t_n][p,q]*m.current_re_line_tf[t_n,f_n,q,t] for q in phases) == 0
     
-    def p_ft(m, f_n, t_n, p, t):
-        return m.active_line_ft[f_n,t_n,p,t] == m.voltage_re[f_n,p,t]*m.current_re_line_ft[f_n,t_n,p,t] + \
-                                              m.voltage_im[f_n,p,t]*m.current_im_line_ft[f_n,t_n,p,t]
-    
-    def p_tf(m, f_n, t_n, p, t):
-        
-        return m.active_line_tf[t_n,f_n,p,t] == m.voltage_re[t_n,p,t]*m.current_re_line_tf[t_n,f_n,p,t] + \
-                                              m.voltage_im[t_n,p,t]*m.current_im_line_tf[t_n,f_n,p,t]
-    
-    def q_ft(m, f_n, t_n, p, t):
-                
-        return m.reactive_line_ft[f_n,t_n,p,t] == m.voltage_im[f_n,p,t]*m.current_re_line_ft[f_n,t_n,p,t] - \
-                                              m.voltage_re[f_n,p,t]*m.current_im_line_ft[f_n,t_n,p,t]
-    
-    def q_tf(m, f_n, t_n, p, t):
-            
-        return m.reactive_line_tf[t_n,f_n,p,t] == m.voltage_im[t_n,p,t]*m.current_re_line_tf[t_n,f_n,p,t] - \
-                                              m.voltage_re[t_n,p,t]*m.current_im_line_tf[t_n,f_n,p,t]
-    
     def current_flow_line_ft(m,f_n,t_n,p,t):
         #Base power = 1e6, nominal voltage = 400/sqrt(3), Base Current = S/U
         for ft in range(0, len(network.line.index)):
@@ -268,12 +249,6 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
         model.voltage_re  = pyo.Var(buses,phases, times, within = pyo.Reals, bounds = (-10,10))
         model.voltage_im  = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-10,10))
         
-        model.active_line_ft = pyo.Var(ft_list, phases, times, within = pyo.Reals, bounds = (-10,10), initialize = 0.0)
-        model.reactive_line_ft = pyo.Var(ft_list, phases, times, within = pyo.Reals, bounds = (-10,10), initialize = 0.0)
-        
-        model.active_line_tf = pyo.Var(tf_list, phases, times, within = pyo.Reals, bounds = (-10,10), initialize = 0.0)
-        model.reactive_line_tf = pyo.Var(tf_list, phases, times, within = pyo.Reals, bounds = (-10,10), initialize = 0.0)
-        
         model.current_re_line_ft = pyo.Var(ft_list, phases, times, within = pyo.Reals, bounds = (-10,10), initialize = 0.0)
         model.current_im_line_ft = pyo.Var(ft_list, phases, times, within = pyo.Reals, bounds = (-10,10), initialize = 0.0)
         
@@ -318,49 +293,48 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
                 model.voltage_im[i,1,t].value = vm_pu*math.sin(-2/3*math.pi)
                 model.voltage_im[i,2,t].value = vm_pu*math.sin(2/3*math.pi)
     
-        for i in range(0, len(network.asymmetric_load.bus)):
-            model.p_load[network.asymmetric_load.bus[i], 0, t].fix(load_curve_a.iloc[t,i]/1e6)
-            model.p_load[network.asymmetric_load.bus[i], 1, t].fix(load_curve_b.iloc[t,i]/1e6)
-            model.p_load[network.asymmetric_load.bus[i], 2, t].fix(load_curve_c.iloc[t,i]/1e6)
+            if i in network.asymmetric_load.bus.values:
 
-            model.q_load[network.asymmetric_load.bus[i], 0, t].fix(load_curve_a.iloc[t,i]*math.tan(math.acos(0.95))/1e6)
-            model.q_load[network.asymmetric_load.bus[i], 1, t].fix(load_curve_b.iloc[t,i]*math.tan(math.acos(0.95))/1e6)
-            model.q_load[network.asymmetric_load.bus[i], 2, t].fix(load_curve_c.iloc[t,i]*math.tan(math.acos(0.95))/1e6)
+                model.p_load[i, 0, t].fix(2*load_curve_a.loc[t,i]/1e6)
+                model.p_load[i, 1, t].fix(2*load_curve_b.loc[t,i]/1e6)
+                model.p_load[i, 2, t].fix(2*load_curve_c.loc[t,i]/1e6)
+    
+                model.q_load[i, 0, t].fix(2*load_curve_a.loc[t,i]/1e6*math.tan(math.acos(0.95)))
+                model.q_load[i, 1, t].fix(2*load_curve_b.loc[t,i]/1e6*math.tan(math.acos(0.95)))
+                model.q_load[i, 2, t].fix(2*load_curve_c.loc[t,i]/1e6*math.tan(math.acos(0.95)))
             
-            #For single-phase connection with randomly defined connection phase
-            if pv_phase[network.asymmetric_load.bus[i]] == 0:
-            
-                model.p_gen[network.asymmetric_load.bus[i], 0, t].value = 0.0
-                model.p_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
-                model.p_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
+                #For single-phase connection with randomly defined connection phase
+                if pv_phase[i] == 0:
                 
-                model.q_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
-                model.q_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
-                model.q_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
-            
-            elif pv_phase[network.asymmetric_load.bus[i]] == 1:
-            
-                model.p_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
-                model.p_gen[network.asymmetric_load.bus[i], 1, t].value = 0.0
-                model.p_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
+                    model.p_gen[i, 0, t].value = 0.0
+                    model.p_gen[i, 1, t].fix(0.0)
+                    model.p_gen[i, 2, t].fix(0.0)
+                    
+                    model.q_gen[i, 0, t].fix(0.0)
+                    model.q_gen[i, 1, t].fix(0.0)
+                    model.q_gen[i, 2, t].fix(0.0)
                 
-                model.q_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
-                model.q_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
-                model.q_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
-            
-            else:
-                model.p_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
-                model.p_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
-                model.p_gen[network.asymmetric_load.bus[i], 2, t].value = 0.0
-                     
-                model.q_gen[network.asymmetric_load.bus[i], 0, t].fix(0.0)
-                model.q_gen[network.asymmetric_load.bus[i], 1, t].fix(0.0)
-                model.q_gen[network.asymmetric_load.bus[i], 2, t].fix(0.0)
+                elif pv_phase[i] == 1:
+                
+                    model.p_gen[i, 0, t].fix(0.0)
+                    model.p_gen[i, 1, t].value = 0.0
+                    model.p_gen[i, 2, t].fix(0.0)
+                    
+                    model.q_gen[i, 0, t].fix(0.0)
+                    model.q_gen[i, 1, t].fix(0.0)
+                    model.q_gen[i, 2, t].fix(0.0)
+                
+                else:
+                    model.p_gen[i, 0, t].fix(0.0)
+                    model.p_gen[i, 1, t].fix(0.0)
+                    model.p_gen[i, 2, t].value = 0.0
+                         
+                    model.q_gen[i, 0, t].fix(0.0)
+                    model.q_gen[i, 1, t].fix(0.0)
+                    model.q_gen[i, 2, t].fix(0.0)
         
-        for i in buses:
+            elif i not in network.asymmetric_load.bus.values and i!=0:
             
-            if i not in network.asymmetric_load.bus.values and i!=0:
-                
                 for p in phases:
                     model.p_load[i, p, t].fix(0.0)
                     model.q_load[i, p, t].fix(0.0)
@@ -375,11 +349,6 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
         model.const_v_drop_re_tf = pyo.Constraint(ft_list, phases, times, rule = voltage_drop_real_tf)
         model.const_v_drop_im_ft = pyo.Constraint(ft_list, phases, times, rule = voltage_drop_imag_ft)
         model.const_v_drop_im_tf = pyo.Constraint(ft_list, phases, times, rule = voltage_drop_imag_tf)
-        
-        model.const_p_ft = pyo.Constraint(ft_list, phases, times, rule = p_ft)
-        model.const_p_tf = pyo.Constraint(ft_list, phases, times, rule = p_tf)
-        model.const_q_ft = pyo.Constraint(ft_list, phases, times, rule = q_ft)
-        model.const_q_tf = pyo.Constraint(ft_list, phases, times, rule = q_tf)
         
         model.const_current_flow_line_ft = pyo.Constraint(ft_list_l, phases, times, rule = current_flow_line_ft)
         model.const_current_flow_line_tf = pyo.Constraint(ft_list_l, phases, times, rule = current_flow_line_tf)
