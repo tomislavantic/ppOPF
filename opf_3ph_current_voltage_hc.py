@@ -167,6 +167,9 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
               
     def pv_power_single_phase_ub(m,n,p,t):
         return m.p_gen[n,p,t] <= (3.68/1000) * pv_curve.iloc[t,0]
+
+    def pv_power_single_phase_lb(m,n,p,t):
+        return m.p_gen[n,p,t] >= 0
         
     r_abc, x_abc, g_abc, b_abc = imp_matrix.impedance_matrix(network)
     
@@ -258,8 +261,8 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
         model.p_load = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
         model.q_load = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
         
-        model.p_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (0,100), initialize = 0.0)
-        model.q_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (0,100), initialize = 0.0)
+        model.p_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
+        model.q_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
         
         model.i_re_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
         model.i_im_gen = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-100,100), initialize = 0.0)
@@ -373,6 +376,7 @@ def opf_3ph_current_voltage(network, load_curve_a, load_curve_b, load_curve_c, p
         model.constr_vuf = pyo.Constraint(buses, times, rule = vuf_limit)
                
         model.constr_pv_single_phase_pv_ub = pyo.Constraint(network.asymmetric_load.bus.values, phases, times, rule = pv_power_single_phase_ub)
+        model.constr_pv_single_phase_pv_lb = pyo.Constraint(network.asymmetric_load.bus.values, phases, times, rule = pv_power_single_phase_lb)
         
         model.obj = pyo.Objective(expr = sum(model.p_gen[n,p,t] for n in network.asymmetric_load.bus.values for p in phases for t in times), sense = pyo.maximize)
                 
