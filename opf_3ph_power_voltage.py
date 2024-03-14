@@ -221,10 +221,7 @@ def opf_3ph_power_voltage(network, load_curve_a, load_curve_b, load_curve_c, vm_
     
     model.kirchoff_reactive_to = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-10,10))
     model.kirchoff_reactive_from = pyo.Var(buses, phases, times, within = pyo.Reals, bounds = (-10,10))
-    
-    model.x_single_phase_pv = pyo.Var(network.asymmetric_load.bus.values, phases, times, domain = pyo.Binary, initialize = 0.0)
-    model.x_three_phase_pv = pyo.Var(network.asymmetric_load.bus.values, times, domain = pyo.Binary, initialize = 0.0)
-    
+        
     for t in times:
         for i in buses:
                 
