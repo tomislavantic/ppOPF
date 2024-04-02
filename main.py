@@ -4,15 +4,15 @@ import opf_3ph_current_voltage
 import opf_3ph_power_voltage
 import opf_3ph_lindist
 
-p_a = pd.read_excel(r'path\CIGRE\active_a_time.xlsx', index_col = 0)
-p_b = pd.read_excel(r'path\CIGRE\active_b_time.xlsx', index_col = 0)
-p_c = pd.read_excel(r'path\CIGRE\active_c_time.xlsx', index_col = 0)
+p_a = pd.read_excel(r'path\active_a_time.xlsx', index_col = 0)
+p_b = pd.read_excel(r'path\active_b_time.xlsx', index_col = 0)
+p_c = pd.read_excel(r'path\active_c_time.xlsx', index_col = 0)
 
-der_a = pd.read_excel(r'C:\Users\Tomislav\Desktop\Posao\SEGAN SEST Extension\CIGRE\der_a.xlsx', index_col = 0)
-der_b = pd.read_excel(r'C:\Users\Tomislav\Desktop\Posao\SEGAN SEST Extension\CIGRE\der_b.xlsx', index_col = 0)
-der_c = pd.read_excel(r'C:\Users\Tomislav\Desktop\Posao\SEGAN SEST Extension\CIGRE\der_c.xlsx', index_col = 0)
+der_a = pd.read_excel(r'path\der_a.xlsx', index_col = 0)
+der_b = pd.read_excel(r'path\der_b.xlsx', index_col = 0)
+der_c = pd.read_excel(r'path\der_c.xlsx', index_col = 0)
 
-net = pp.from_excel(r'C:\Users\Tomislav\Desktop\Posao\SEGAN SEST Extension\CIGRE\cigre_lv.xlsx')
+net = pp.from_excel(r'path\cigre_lv.xlsx')
 
 obj, total, v_a, v_b, v_c, p_der_a, p_der_b, p_der_c, s_a, s_b, s_c = opf_3ph_current_voltage.opf_3ph_current_voltage(net, p_a, p_b, p_c, der_a, der_b, der_c, 1.0)
 # obj, total, v_a, v_b, v_c, p_der_a, p_der_b, p_der_c, s_a, s_b, s_c = opf_3ph_power_voltage.opf_3ph_power_voltage(net, p_a, p_b, p_c, der_a, der_b, der_c, 1.0)
