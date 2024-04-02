@@ -1,20 +1,31 @@
-import pandapower as pp
 import pandas as pd
-# import opf_3ph_power_voltage
+import pandapower as pp
 import opf_3ph_current_voltage
+import opf_3ph_power_voltage
+import opf_3ph_lindist
 
-#Creating network from json file. This script can be modified in order to use other types of data (xlsx, csv, etc.)
-#Additionally, the network can be created by directly defining elements, without any other source of data.
-#Replace path with the exact path (all directories) to the neccessary files.
+p_a = pd.read_excel(r'path\CIGRE\active_a_time.xlsx', index_col = 0)
+p_b = pd.read_excel(r'path\CIGRE\active_b_time.xlsx', index_col = 0)
+p_c = pd.read_excel(r'path\CIGRE\active_c_time.xlsx', index_col = 0)
 
-net = pp.from_json(r'path\cigre_lv_modified.json')
-#Load curves that are input in pp OPF - both power-voltage and current-voltage formulations
+der_a = pd.read_excel(r'C:\Users\Tomislav\Desktop\Posao\SEGAN SEST Extension\CIGRE\der_a.xlsx', index_col = 0)
+der_b = pd.read_excel(r'C:\Users\Tomislav\Desktop\Posao\SEGAN SEST Extension\CIGRE\der_b.xlsx', index_col = 0)
+der_c = pd.read_excel(r'C:\Users\Tomislav\Desktop\Posao\SEGAN SEST Extension\CIGRE\der_c.xlsx', index_col = 0)
 
-p_load_a = pd.read_excel(r'path\p_load_a.xlsx', index_col = 0)
-p_load_b = pd.read_excel(r'path\p_load_b.xlsx', index_col = 0)
-p_load_c = pd.read_excel(r'path\p_load_c.xlsx', index_col = 0)
+net = pp.from_excel(r'C:\Users\Tomislav\Desktop\Posao\SEGAN SEST Extension\CIGRE\cigre_lv.xlsx')
 
-# v_a, v_b, v_c = opf_3ph_power_voltage.opf_3ph_power_voltage(net, p_load_a, p_load_b, p_load_c, vm_pu = 1.00)
-v_a, v_b, v_c = opf_3ph_current_voltage.opf_3ph_current_voltage(net, p_load_a, p_load_b, p_load_c, vm_pu = 1.0)
+obj, total, v_a, v_b, v_c, p_der_a, p_der_b, p_der_c, s_a, s_b, s_c = opf_3ph_current_voltage.opf_3ph_current_voltage(net, p_a, p_b, p_c, der_a, der_b, der_c, 1.0)
+# obj, total, v_a, v_b, v_c, p_der_a, p_der_b, p_der_c, s_a, s_b, s_c = opf_3ph_power_voltage.opf_3ph_power_voltage(net, p_a, p_b, p_c, der_a, der_b, der_c, 1.0)
+# obj, total, v_a, v_b, v_c, p_der_a, p_der_b, p_der_c, s_a, s_b, s_c = opf_3ph_lindist.opf_3ph_lindistflow(net, p_a, p_b, p_c, der_a, der_b, der_c, 1.0)
 
+v_a.to_excel(r'path\v_a_s1_cs_1_2.xlsx')
+v_b.to_excel(r'path\v_b_s1_cs_1_2.xlsx')
+v_c.to_excel(r'path\v_c_s1_cs_1_2.xlsx')
 
+p_der_a.to_excel(r'path\p_der_a_s1_cs_1_2.xlsx')
+p_der_b.to_excel(r'path\p_der_b_s1_cs_1_2.xlsx')
+p_der_c.to_excel(r'path\p_der_c_s1_cs_1_2.xlsx')
+
+s_a.to_excel(r'path\s_a_s1_cs_1_2.xlsx')
+s_b.to_excel(r'path\s_b_s1_cs_1_2.xlsx')
+s_c.to_excel(r'path\s_c_s1_cs_1_2.xlsx')
